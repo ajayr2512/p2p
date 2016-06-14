@@ -19,6 +19,7 @@ func main() {
 
 	// Check reconnect or new connection
 	p, peerData := peers.NewPeer(*port, *hostName, *data)
+	log.Println("From Node : ", p.cookie)
 	log.Println("Peer Registering with RS")
 	if err = p.Register(); err != nil {
 		log.Fatal(err)

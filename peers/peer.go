@@ -48,6 +48,7 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 
 	}
 
+	log.Println("cookie: ", cookie)
 	// data directory check to create file list
 	fileinfo, err := ioutil.ReadDir(data)
 	if err != nil {
