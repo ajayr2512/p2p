@@ -1,7 +1,8 @@
-package RS
+package main
 
 import (
 	"bufio"
+	"bytes"
 	"io/ioutil"
 	"log"
 	"net"
@@ -30,6 +31,7 @@ func main() {
 	go func() {
 		i := 1
 		for {
+			log.Println(i, "From cookie generator")
 			idChan <- i
 			i = i + 1
 		}
@@ -68,9 +70,11 @@ func main() {
 }
 
 func processRequest(msg []byte, conn net.Conn) {
-	scanner := bufio.NewScanner(msg)
+	b := bytes.NewBuffer(msg)
+	scanner := bufio.NewScanner(b)
 	scanner.Scan()
 	msgType := scanner.Text()
+	var p peerInfo
 	switch msgType {
 	case "REGISTER":
 		cookie := <-idChan
@@ -78,17 +82,17 @@ func processRequest(msg []byte, conn net.Conn) {
 			s := strings.Split(scanner.Text(), ":")
 			switch s[0] {
 			case "HOSTNAME":
-				peerInfo.hostName = s[1]
+				p.hostName = s[1]
 			case "PORT":
-				peerInfo.port = strconv.Atoi(s[1])
+				p.port, _ = strconv.Atoi(s[1])
 			}
 		}
 
-		peerInfo.ttl = 7200
-		peerInfo.flag = true
-		peerDict[cookie] = peerInfo
+		p.ttl = 7200
+		p.flag = true
+		peerDict[cookie] = p
 
-		reply := []byte("STATUS:PASS\nCOOKIE:" + stconv.Itoa(cookie))
+		reply := []byte("STATUS:PASS\nCOOKIE:" + strconv.Itoa(cookie))
 		if _, err := conn.Write(reply); err != nil {
 			log.Println(err)
 		}

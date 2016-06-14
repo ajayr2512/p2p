@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -19,12 +21,49 @@ type Peer struct {
 	data     string
 }
 
-func newPeer(port int, hname, data string) (peer Peer) {
+type fileList []string
+
+func newPeer(port int, hname, data string) (peer Peer, files fileList) {
+	// create cookie file if doesnt exist
+	cookie := -1
+	cookiePath := filepath.Join(data, "COOKIE")
+	if _, err := os.Stat(cookiePath); os.IsNotExist(err) {
+		if file, err := os.Create(cookiePath); err != nil {
+			log.Fatal(err)
+			defer file.Close()
+		}
+	} else {
+		file, err := os.OpenFile(cookiePath, os.O_RDWR, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var cookieBytes []byte
+		if cookieBytes, err = ioutil.ReadAll(file); err != nil {
+			log.Fatal(err)
+		}
+		if cookie, err = stconv.Atoi(string(cookieBytes)); err != nil {
+			log.Println("Corrupt cookie file")
+			log.Println(err)
+		}
+
+	}
+
+	// data directory check to create file list
+	fileinfo, err := ioutil.ReadDir(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var files fileList
+	for _, file := range fileinfo {
+		files = append(files, file.Name())
+	}
 	return Peer{
 		hostName: hname,
 		port:     port,
 		data:     data,
-	}
+		cookie:   cookie,
+	}, files
+
 }
 
 func (peer Peer) register() (err error) {
@@ -73,7 +112,10 @@ func main() {
 	//if err != nil {
 	//	log.Fatal("File corrupt")
 	//}
-	p := newPeer(*port, *hostName, *data)
+
+	// Check reconnect or new connection
+	cookie := checkState()
+	p := newPeer(*port, *hostName, *data, cookie)
 	log.Println("Peer Registering with RS")
 	if err = p.register(); err != nil {
 		log.Fatal(err)
