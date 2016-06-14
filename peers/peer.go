@@ -3,7 +3,6 @@ package peers
 import (
 	"bufio"
 	"errors"
-	"flag"
 	"hrank/ptp/proto"
 	"io/ioutil"
 	"log"
@@ -23,7 +22,7 @@ type Peer struct {
 
 type fileList []string
 
-func newPeer(port int, hname, data string) (peer Peer, files fileList) {
+func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 	// create cookie file if doesnt exist
 	cookie := -1
 	cookiePath := filepath.Join(data, "COOKIE")
@@ -45,6 +44,7 @@ func newPeer(port int, hname, data string) (peer Peer, files fileList) {
 			log.Println("Corrupt cookie file")
 			log.Println(err)
 		}
+		defer file.Close()
 
 	}
 
@@ -66,7 +66,7 @@ func newPeer(port int, hname, data string) (peer Peer, files fileList) {
 
 }
 
-func (peer Peer) register() (err error) {
+func (peer Peer) Register() (err error) {
 	// TO DO: Use protoBUf ????
 	conn, err := net.Dial("tcp", "localhost:60000")
 	if err != nil {
@@ -98,27 +98,4 @@ func (peer Peer) register() (err error) {
 		}
 	}
 
-}
-
-func main() {
-	// Get the cli arguments and populate peer details
-	hostName := flag.String("hostname", "localhost", "host name of peer")
-	port := flag.Int("port", 85000, "Port Num of peer")
-	data := flag.String("data", "", "data associated with peer")
-
-	// Do this on actual file send
-	// Read Dir !!
-	//dat, err := ioutil.ReadAll(*data)
-	//if err != nil {
-	//	log.Fatal("File corrupt")
-	//}
-
-	// Check reconnect or new connection
-	cookie := checkState()
-	p := newPeer(*port, *hostName, *data, cookie)
-	log.Println("Peer Registering with RS")
-	if err = p.register(); err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("Peer %s registered at port %d\n", p.hostName, p.port)
 }
