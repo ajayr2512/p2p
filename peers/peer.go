@@ -2,8 +2,8 @@ package peers
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
-	"hrank/ptp/proto"
 	"io/ioutil"
 	"log"
 	"net"
@@ -26,12 +26,15 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 	// create cookie file if doesnt exist
 	cookie := -1
 	cookiePath := filepath.Join(data, "COOKIE")
+	var file *os.File
 	if _, err := os.Stat(cookiePath); os.IsNotExist(err) {
-		if file, err := os.Create(cookiePath); err != nil {
+		log.Println("Here 1")
+		if file, err = os.Create(cookiePath); err != nil {
 			log.Fatal(err)
-			defer file.Close()
 		}
+		defer file.Close()
 	} else {
+		log.Println("Here 2")
 		file, err := os.OpenFile(cookiePath, os.O_RDWR, 0644)
 		if err != nil {
 			log.Fatal(err)
@@ -40,7 +43,7 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 		if cookieBytes, err = ioutil.ReadAll(file); err != nil {
 			log.Fatal(err)
 		}
-		if cookie, err = stconv.Atoi(string(cookieBytes)); err != nil {
+		if cookie, err = strconv.Atoi(string(cookieBytes)); err != nil {
 			log.Println("Corrupt cookie file")
 			log.Println(err)
 		}
@@ -54,7 +57,6 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var files fileList
 	for _, file := range fileinfo {
 		files = append(files, file.Name())
 	}
@@ -74,7 +76,7 @@ func (peer Peer) Register() (err error) {
 		return err
 	}
 	var msg []byte
-	if msg, err = proto.RegisterMessage(peer); err != nil {
+	if msg, err = RegisterMessage(peer); err != nil {
 		return err
 	}
 	if _, err = conn.Write(msg); err != nil {
@@ -84,7 +86,8 @@ func (peer Peer) Register() (err error) {
 	if err != nil {
 		return err
 	}
-	scanner := bufio.NewScanner(msg)
+	b := bytes.NewBuffer(msg)
+	scanner := bufio.NewScanner(b)
 	for scanner.Scan() {
 		s := strings.Split(scanner.Text(), ":")
 		switch s[0] {
@@ -93,10 +96,12 @@ func (peer Peer) Register() (err error) {
 				return errors.New("protocl error")
 			}
 		case "COOKIE":
-			peer.cookie = strconv.Atoi(s[1])
+			// err handle
+			peer.cookie, _ = strconv.Atoi(s[1])
 		default:
 			log.Printf("Received Unknown info from RS: %s", s[0])
 		}
 	}
+	return nil
 
 }

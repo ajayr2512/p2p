@@ -12,6 +12,11 @@ func main() {
 	port := flag.Int("port", 85000, "Port Num of peer")
 	data := flag.String("data", "", "data associated with peer")
 
+	flag.Parse()
+	if *data == "" {
+		log.Fatal("Specify data directory for node")
+	}
+
 	// Do this on actual file send
 	//if err != nil {
 	//	log.Fatal("File corrupt")
@@ -19,10 +24,10 @@ func main() {
 
 	// Check reconnect or new connection
 	p, peerData := peers.NewPeer(*port, *hostName, *data)
-	log.Println("From Node : ", p.cookie)
+	log.Println("From Node : ")
 	log.Println("Peer Registering with RS")
-	if err = p.Register(); err != nil {
+	if err := p.Register(); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Peer %s registered at port %d\n", p.hostName, p.port)
+	log.Printf("Peer  registered, data: \n", peerData)
 }
