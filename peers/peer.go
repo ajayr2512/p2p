@@ -34,6 +34,7 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 		}
 		defer file.Close()
 	} else {
+		// To DO: If empty then also -1 ??
 		log.Println("Here 2")
 		file, err := os.OpenFile(cookiePath, os.O_RDWR, 0644)
 		if err != nil {
@@ -46,6 +47,7 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 		if cookie, err = strconv.Atoi(string(cookieBytes)); err != nil {
 			log.Println("Corrupt cookie file")
 			log.Println(err)
+			cookie = -1
 		}
 		defer file.Close()
 
@@ -79,15 +81,19 @@ func (peer Peer) Register() (err error) {
 	if msg, err = RegisterMessage(peer); err != nil {
 		return err
 	}
+	log.Println(string(msg))
 	if _, err = conn.Write(msg); err != nil {
 		return err
 	}
-	msg, err = ioutil.ReadAll(conn)
-	if err != nil {
-		return err
+
+	b := bufio.NewReader(conn)
+	var req []byte
+	if req, err = b.ReadBytes('\r'); err != nil {
+		log.Fatal(err)
 	}
-	b := bytes.NewBuffer(msg)
-	scanner := bufio.NewScanner(b)
+
+	br := bytes.NewBuffer(req)
+	scanner := bufio.NewScanner(br)
 	for scanner.Scan() {
 		s := strings.Split(scanner.Text(), ":")
 		switch s[0] {
