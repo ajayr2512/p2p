@@ -134,3 +134,11 @@ func (peer *Peer) Leave() (err error) {
 	}
 	return nil
 }
+
+func NewPeerServer() (ln net.Listener, err error) {
+	if ln, err := net.Listen("tcp", ":60000"); err != nil {
+		return nil, err
+	} else {
+		return ln, nil
+	}
+}

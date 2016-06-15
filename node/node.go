@@ -5,7 +5,27 @@ import (
 	"fmt"
 	"hrank/ptp/peers"
 	"log"
+	"net"
 )
+
+func processPeerRequest(conn net.Conn) {
+
+}
+
+func startNodeServer(p peers.Peer, data []string) {
+	ln, err := peers.NewPeerServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for {
+		var conn net.Conn
+		if conn, err = ln.Accept(); err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Accepted connection")
+		go processPeerRequest(conn)
+	}
+}
 
 func main() {
 	// Get the cli arguments and populate peer details
@@ -25,7 +45,8 @@ func main() {
 
 	// Check reconnect or new connection
 	p, peerData := peers.NewPeer(*port, *hostName, *data)
-	log.Println("From Node : ")
+	log.Println("Starting node server")
+	go startNodeServer(p, peerData)
 	log.Println("Peer Registering with RS")
 	if err := p.Register(); err != nil {
 		log.Fatal(err)
@@ -45,4 +66,6 @@ loop:
 		}
 
 	}
+
+	log.Printf("Peer  registered, data: \n", peerData)
 }
