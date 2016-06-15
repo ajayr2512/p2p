@@ -3,7 +3,6 @@ package peers
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net"
@@ -78,7 +77,7 @@ func (peer Peer) Register() (err error) {
 		return err
 	}
 	var msg []byte
-	if msg, err = RegisterMessage(peer); err != nil {
+	if msg, err = RegisterRequest(peer); err != nil {
 		return err
 	}
 	log.Println(string(msg))
@@ -89,23 +88,26 @@ func (peer Peer) Register() (err error) {
 	b := bufio.NewReader(conn)
 	var req []byte
 	if req, err = b.ReadBytes('\r'); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	br := bytes.NewBuffer(req)
 	scanner := bufio.NewScanner(br)
 	for scanner.Scan() {
 		s := strings.Split(scanner.Text(), ":")
-		switch s[0] {
-		case "STATUS":
-			if s[1] == "FAIL" {
-				return errors.New("protocl error")
+		if s[0] == "STATUS" && s[1] != "NEW" {
+			break
+		}
+		if s[0] == "COOKIE" {
+			cookiePath := filepath.Join(peer.data, "COOKIE")
+			file, err := os.OpenFile(cookiePath, os.O_WRONLY, 0666)
+			if err != nil {
+				return err
 			}
-		case "COOKIE":
-			// err handle
-			peer.cookie, _ = strconv.Atoi(s[1])
-		default:
-			log.Printf("Received Unknown info from RS: %s", s[0])
+			defer file.Close()
+			if _, err = file.WriteString(s[1]); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

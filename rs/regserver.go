@@ -16,20 +16,20 @@ type peerInfo struct {
 	port     int
 }
 
-var peerDict = make(map[int]peerInfo)
+var activeDict = make(map[int]peerInfo)
+var inactiveDict = make(map[int]peerInfo)
+var peerCount = 0
 
 //var idChan chan int
 
-// Deciding on whether it is the same host joining
-// or a new host is based on hostName/port combo
-// TO DO: Add new msg join which enables re-joining
-// on peer control.
+// Moved cookie logic + Connect/Re-connect to clients
+
 func main() {
 	idChan := make(chan int)
 
 	// Starting cookie generator
 	go func() {
-		i := 1
+		i := peerCount + 1
 		for {
 			idChan <- i
 			log.Println(i, "From cookie generator")
@@ -81,10 +81,9 @@ func processRequest(msg []byte, conn net.Conn, idChan chan int) {
 	msgType := scanner.Text()
 	log.Println(msgType)
 	var p peerInfo
+	var cookie int
 	switch msgType {
 	case "REGISTER":
-		cookie := <-idChan
-		log.Println(cookie)
 		for scanner.Scan() {
 			s := strings.Split(scanner.Text(), ":")
 			switch s[0] {
@@ -92,14 +91,19 @@ func processRequest(msg []byte, conn net.Conn, idChan chan int) {
 				p.hostName = s[1]
 			case "PORT":
 				p.port, _ = strconv.Atoi(s[1])
+			case "COOKIE":
+				cookie, _ = strconv.Atoi(s[1])
 			}
 		}
-
+		if cookie == -1 {
+			cookie = <-idChan
+		}
+		log.Println(cookie)
 		p.ttl = 7200
 		p.flag = true
-		peerDict[cookie] = p
+		activeDict[cookie] = p
 
-		reply := []byte("STATUS:PASS\nCOOKIE:" + strconv.Itoa(cookie))
+		reply := []byte("STATUS:NEW\nCOOKIE:" + strconv.Itoa(cookie))
 		reply = append(reply, byte('\r'))
 		if _, err := conn.Write(reply); err != nil {
 			log.Println(err)
