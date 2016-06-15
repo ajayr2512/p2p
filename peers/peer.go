@@ -70,14 +70,14 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 
 }
 
-func (peer Peer) Register() (err error) {
+func (peer *Peer) Register() (err error) {
 	// TO DO: Use protoBUf ????
 	conn, err := net.Dial("tcp", "localhost:60000")
 	if err != nil {
 		return err
 	}
 	var msg []byte
-	if msg, err = RegisterRequest(peer); err != nil {
+	if msg, err = RegisterRequest(*peer); err != nil {
 		return err
 	}
 	log.Println(string(msg))
@@ -108,8 +108,29 @@ func (peer Peer) Register() (err error) {
 			if _, err = file.WriteString(s[1]); err != nil {
 				return err
 			}
+			peer.cookie, _ = strconv.Atoi(s[1])
 		}
 	}
 	return nil
 
+}
+
+func (peer *Peer) Leave() (err error) {
+	conn, err := net.Dial("tcp", "localhost:60000")
+	if err != nil {
+		return err
+	}
+	var msg []byte
+	if msg, err = LeaveRequest(*peer); err != nil {
+		return err
+	}
+	log.Println(string(msg))
+	if _, err = conn.Write(msg); err != nil {
+		return err
+	}
+
+	if _, err = conn.Write(msg); err != nil {
+		return err
+	}
+	return nil
 }

@@ -17,8 +17,6 @@ type peerInfo struct {
 }
 
 var activeDict = make(map[int]peerInfo)
-var inactiveDict = make(map[int]peerInfo)
-var peerCount = 0
 
 //var idChan chan int
 
@@ -29,7 +27,7 @@ func main() {
 
 	// Starting cookie generator
 	go func() {
-		i := peerCount + 1
+		i := 1
 		for {
 			idChan <- i
 			log.Println(i, "From cookie generator")
@@ -95,19 +93,45 @@ func processRequest(msg []byte, conn net.Conn, idChan chan int) {
 				cookie, _ = strconv.Atoi(s[1])
 			}
 		}
+		var reply []byte
 		if cookie == -1 {
 			cookie = <-idChan
+			reply = []byte("STATUS:NEW\nCOOKIE:" + strconv.Itoa(cookie))
+		} else {
+			reply = []byte("STATUS:RECONNECT\nCOOKIE:" + strconv.Itoa(cookie))
 		}
 		log.Println(cookie)
 		p.ttl = 7200
 		p.flag = true
 		activeDict[cookie] = p
 
-		reply := []byte("STATUS:NEW\nCOOKIE:" + strconv.Itoa(cookie))
 		reply = append(reply, byte('\r'))
 		if _, err := conn.Write(reply); err != nil {
 			log.Println(err)
 		}
+		log.Println("Active one's left are :")
+		for i, _ := range activeDict {
+			log.Println(i)
+		}
 
+	case "LEAVE":
+		for scanner.Scan() {
+			s := strings.Split(scanner.Text(), ":")
+			switch s[0] {
+			case "HOSTNAME":
+				p.hostName = s[1]
+			case "PORT":
+				p.port, _ = strconv.Atoi(s[1])
+			case "COOKIE":
+				cookie, _ = strconv.Atoi(s[1])
+			}
+		}
+		p.ttl = 0
+		p.flag = false
+		delete(activeDict, cookie)
+		log.Println("Active one's left are :")
+		for i, _ := range activeDict {
+			log.Println(i)
+		}
 	}
 }

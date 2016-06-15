@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"hrank/ptp/peers"
 	"log"
 )
@@ -29,5 +30,19 @@ func main() {
 	if err := p.Register(); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Peer  registered, data: \n", peerData)
+	log.Printf("Peer  registered, data: \n", peerData, p)
+	var in string
+	fmt.Println("HELP TEXT CLIENT")
+loop:
+	for {
+		fmt.Scanf("%s", &in)
+		if in == "LEAVE" {
+			if err := p.Leave(); err != nil {
+				log.Fatal(err)
+			}
+			//stop node server
+			break loop
+		}
+
+	}
 }
