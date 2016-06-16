@@ -18,6 +18,7 @@ func RegisterRequest(peer Peer) (msg []byte, err error) {
 }
 
 func LeaveRequest(peer Peer) (msg []byte, err error) {
+	// TODO: Dont need the host port only send cookie
 	leaveMsg := []byte("LEAVE\n")
 	if peer.cookie == -1 {
 		return nil, errors.New("peer not registered")
@@ -27,4 +28,14 @@ func LeaveRequest(peer Peer) (msg []byte, err error) {
 	leaveMsg = append(leaveMsg, []byte("COOKIE:"+strconv.Itoa(peer.cookie)+"\n")...)
 	leaveMsg = append(leaveMsg, byte('\r'))
 	return leaveMsg, nil
+}
+
+func ActiveNodesRequest() (msg []byte, err error) {
+	nodeMsg := []byte("GETNODES\n\r")
+	return nodeMsg, nil
+}
+
+func FileListRequest() (msg []byte, err error) {
+	listMsg := []byte("GETFILELIST\n\r")
+	return listMsg, nil
 }

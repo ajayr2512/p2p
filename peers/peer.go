@@ -33,7 +33,7 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 		}
 		defer file.Close()
 	} else {
-		// To DO: If empty then also -1 ??
+		// If COOKIE is corrupt generating as new connection
 		log.Println("Here 2")
 		file, err := os.OpenFile(cookiePath, os.O_RDWR, 0644)
 		if err != nil {
@@ -129,16 +129,88 @@ func (peer *Peer) Leave() (err error) {
 		return err
 	}
 
-	if _, err = conn.Write(msg); err != nil {
-		return err
-	}
 	return nil
 }
 
-func NewPeerServer() (ln net.Listener, err error) {
-	if ln, err := net.Listen("tcp", ":60000"); err != nil {
+func NewPeerServer(peer Peer) (ln net.Listener, err error) {
+	if ln, err := net.Listen("tcp", peer.hostName+":"+strconv.Itoa(peer.port)); err != nil {
 		return nil, err
 	} else {
 		return ln, nil
 	}
+}
+
+func (peer *Peer) GetFile(fileName string) (err error) {
+	// Contact RS to get list of active nodes
+	conn, err := net.Dial("tcp", "localhost:60000")
+	if err != nil {
+		return err
+	}
+	var msg []byte
+	if msg, err = ActiveNodesRequest(); err != nil {
+		return err
+	}
+	log.Println(string(msg))
+	if _, err = conn.Write(msg); err != nil {
+		return err
+	}
+
+	b := bufio.NewReader(conn)
+	var req []byte
+	if req, err = b.ReadBytes('\r'); err != nil {
+		return err
+	}
+
+	br := bytes.NewBuffer(req)
+	scanner := bufio.NewScanner(br)
+	var fileNode string
+	// TODO: scanner err handling everywhere
+	for scanner.Scan() {
+		// ** Change peer struct to store filelist instead of data ??
+		// Query each node to get their filelist
+		if isFilePresent(scanner.Text(), fileName) {
+			fileNode = (scanner.Text())
+			break
+		}
+	}
+
+	log.Println("File found in ", fileNode)
+	// if the list contains fileName
+	// contact the guy to send the file
+	// receive the file and save in data
+
+	return nil
+}
+
+func isFilePresent(peerNode, fileName string) bool {
+	// TODO: fix this to return bool,err
+	conn, err := net.Dial("tcp", peerNode)
+	if err != nil {
+		return false
+	}
+
+	var msg []byte
+	if msg, err = FileListRequest(); err != nil {
+		return false
+	}
+	log.Println(string(msg))
+	if _, err = conn.Write(msg); err != nil {
+		return false
+	}
+
+	b := bufio.NewReader(conn)
+	var req []byte
+	if req, err = b.ReadBytes('\r'); err != nil {
+		return false
+	}
+
+	br := bytes.NewBuffer(req)
+	scanner := bufio.NewScanner(br)
+
+	for scanner.Scan() {
+		if scanner.Text() == fileName {
+			return true
+		}
+	}
+	return false
 }

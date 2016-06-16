@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// TODO: Need flag ??
 type peerInfo struct {
 	ttl      int
 	flag     bool
@@ -55,6 +56,8 @@ func main() {
 		}
 	}()
 
+	// TODO: move the reading from connection to process request
+	// and dont pass req ..
 	log.Println("Waiting for connections")
 	for {
 		conn := <-conChan
@@ -115,6 +118,7 @@ func processRequest(msg []byte, conn net.Conn, idChan chan int) {
 		}
 
 	case "LEAVE":
+		// TODO: Only receive cookie
 		for scanner.Scan() {
 			s := strings.Split(scanner.Text(), ":")
 			switch s[0] {
@@ -133,5 +137,17 @@ func processRequest(msg []byte, conn net.Conn, idChan chan int) {
 		for i, _ := range activeDict {
 			log.Println(i)
 		}
+
+	case "GETNODES":
+		var reply []byte
+		for _, value := range activeDict {
+			// TODO: y strconv all the places .. change port to string
+			reply = append(reply, []byte(value.hostName+":"+strconv.Itoa(value.port)+"\n")...)
+		}
+		reply = append(reply, byte('\r'))
+		if _, err := conn.Write(reply); err != nil {
+			log.Println(err)
+		}
+		log.Println("Replied with: ", string(reply))
 	}
 }
