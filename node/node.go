@@ -5,10 +5,11 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"hrank/ptp/peers"
 	"log"
 	"net"
 	"strings"
+
+	"github.com/ajayr2512/ptp/peers"
 )
 
 func processPeerRequest(conn net.Conn, fileList []string) {
