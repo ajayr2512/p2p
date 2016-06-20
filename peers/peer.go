@@ -3,6 +3,7 @@ package peers
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net"
@@ -59,7 +60,9 @@ func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 		log.Fatal(err)
 	}
 	for _, file := range fileinfo {
-		files = append(files, file.Name())
+		if file.Name() != "COOKIE" {
+			files = append(files, file.Name())
+		}
 	}
 	return Peer{
 		hostName: hname,
@@ -166,20 +169,24 @@ func (peer *Peer) GetFile(fileName string) (err error) {
 	var fileNode string
 	// TODO: scanner err handling everywhere
 	for scanner.Scan() {
+		if scanner.Text() == peer.hostName+":"+strconv.Itoa(peer.port) {
+			continue
+		}
 		// ** Change peer struct to store filelist instead of data ??
 		// Query each node to get their filelist
+		// TODO: Have a caching mechanism ??
 		if isFilePresent(scanner.Text(), fileName) {
 			fileNode = (scanner.Text())
-			break
+			log.Println("File found in ", fileNode)
+			return nil
 		}
 	}
 
-	log.Println("File found in ", fileNode)
 	// if the list contains fileName
 	// contact the guy to send the file
 	// receive the file and save in data
 
-	return nil
+	return errors.New("file not found")
 }
 
 func isFilePresent(peerNode, fileName string) bool {

@@ -25,6 +25,7 @@ func processPeerRequest(conn net.Conn, fileList []string) {
 
 	log.Println(string(req))
 
+	// TODO: Directly read req into this
 	br := bytes.NewBuffer(req)
 	scanner := bufio.NewScanner(br)
 	scanner.Scan()
@@ -36,6 +37,7 @@ func processPeerRequest(conn net.Conn, fileList []string) {
 	case "GETFILELIST":
 		for _, i := range fileList {
 			reply = append(reply, []byte(i)...)
+			reply = append(reply, []byte("\n")...)
 		}
 		reply = append(reply, byte('\r'))
 		if _, err := conn.Write(reply); err != nil {
@@ -120,7 +122,7 @@ loop:
 		if strings.HasPrefix(in, "GET") {
 			s := strings.Split(in, ":")
 			if err := p.GetFile(s[1]); err != nil {
-				log.Fatal(err)
+				log.Println(err)
 			}
 		}
 
