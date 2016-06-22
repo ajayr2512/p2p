@@ -3,7 +3,6 @@ package peers
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net"
@@ -143,81 +142,99 @@ func NewPeerServer(peer Peer) (ln net.Listener, err error) {
 	}
 }
 
-func (peer *Peer) GetFile(fileName string) (err error) {
+func (peer *Peer) GetFile(fileName string, fileHostMap map[string]string) (err error) {
 	// Contact RS to get list of active nodes
-	conn, err := net.Dial("tcp", "localhost:60000")
-	if err != nil {
-		return err
-	}
-	var msg []byte
-	if msg, err = ActiveNodesRequest(); err != nil {
-		return err
-	}
-	log.Println(string(msg))
-	if _, err = conn.Write(msg); err != nil {
-		return err
+	if _, ok := fileHostMap[fileName]; !ok {
+		conn, err := net.Dial("tcp", "localhost:60000")
+		if err != nil {
+			return err
+		}
+		var msg []byte
+		if msg, err = ActiveNodesRequest(); err != nil {
+			return err
+		}
+		log.Println(string(msg))
+		if _, err = conn.Write(msg); err != nil {
+			return err
+		}
+
+		b := bufio.NewReader(conn)
+		var req []byte
+		if req, err = b.ReadBytes('\r'); err != nil {
+			return err
+		}
+
+		br := bytes.NewBuffer(req)
+		scanner := bufio.NewScanner(br)
+		// TODO: scanner err handling everywhere
+		for scanner.Scan() {
+			if scanner.Text() == peer.hostName+":"+strconv.Itoa(peer.port) || scanner.Text() == "" {
+				continue
+			}
+
+			if err = getFileListFromNodes(fileHostMap, scanner.Text()); err != nil {
+				return err
+			}
+
+			// ** Change peer struct to store filelist instead of data ??
+			// Query each node to get their filelist
+			// TODO: Have a caching mechanism ??
+			//	if isFilePresent(scanner.Text(), fileName) {
+			//		fileNode = (scanner.Text())
+			//		log.Println("File found in ", fileNode)
+			//		return nil
+			//	}
+		}
 	}
 
-	b := bufio.NewReader(conn)
-	var req []byte
-	if req, err = b.ReadBytes('\r'); err != nil {
-		return err
-	}
+	log.Println("Get File ", fileHostMap)
 
-	br := bytes.NewBuffer(req)
-	scanner := bufio.NewScanner(br)
-	var fileNode string
-	// TODO: scanner err handling everywhere
-	for scanner.Scan() {
-		if scanner.Text() == peer.hostName+":"+strconv.Itoa(peer.port) {
-			continue
-		}
-		// ** Change peer struct to store filelist instead of data ??
-		// Query each node to get their filelist
-		// TODO: Have a caching mechanism ??
-		if isFilePresent(scanner.Text(), fileName) {
-			fileNode = (scanner.Text())
-			log.Println("File found in ", fileNode)
-			return nil
-		}
+	if err = getFileFromHost(fileName, fileHostMap[fileName]); err != nil {
+		return err
 	}
 
 	// if the list contains fileName
 	// contact the guy to send the file
 	// receive the file and save in data
 
-	return errors.New("file not found")
+	return nil
 }
 
-func isFilePresent(peerNode, fileName string) bool {
-	// TODO: fix this to return bool,err
-	conn, err := net.Dial("tcp", peerNode)
+func getFileListFromNodes(fileHostMap map[string]string, host string) (err error) {
+	conn, err := net.Dial("tcp", host)
 	if err != nil {
-		return false
+		return err
 	}
-
 	var msg []byte
 	if msg, err = FileListRequest(); err != nil {
-		return false
+		return err
 	}
 	log.Println(string(msg))
 	if _, err = conn.Write(msg); err != nil {
-		return false
+		return err
 	}
 
 	b := bufio.NewReader(conn)
 	var req []byte
 	if req, err = b.ReadBytes('\r'); err != nil {
-		return false
+		return err
 	}
 
 	br := bytes.NewBuffer(req)
 	scanner := bufio.NewScanner(br)
 
 	for scanner.Scan() {
-		if scanner.Text() == fileName {
-			return true
+		log.Println("getFIleListFromNodes :", scanner.Text())
+		if scanner.Text() != "" {
+			fileHostMap[scanner.Text()] = host
 		}
 	}
-	return false
+	log.Println("getFIleListFromNodes :", fileHostMap)
+	return nil
+}
+
+func getFileFromHost(fileName string, host string) (err error) {
+	log.Println(fileName)
+	log.Println(host)
+	return nil
 }

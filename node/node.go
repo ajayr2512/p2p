@@ -89,12 +89,6 @@ func main() {
 	if *data == "" {
 		log.Fatal("Specify data directory for node")
 	}
-
-	// Do this on actual file send
-	//if err != nil {
-	//	log.Fatal("File corrupt")
-	//}
-
 	// Check reconnect or new connection
 	p, peerData := peers.NewPeer(*port, *hostName, *data)
 	log.Println("Starting node server")
@@ -106,6 +100,7 @@ func main() {
 	}
 	log.Printf("Peer  registered, data: \n", peerData, p)
 	var in string
+	fileHostMap := make(map[string]string)
 	fmt.Println("HELP TEXT CLIENT")
 loop:
 	for {
@@ -121,7 +116,7 @@ loop:
 
 		if strings.HasPrefix(in, "GET") {
 			s := strings.Split(in, ":")
-			if err := p.GetFile(s[1]); err != nil {
+			if err := p.GetFile(s[1], fileHostMap); err != nil {
 				log.Println(err)
 			}
 		}
