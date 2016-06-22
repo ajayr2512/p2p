@@ -39,3 +39,8 @@ func FileListRequest() (msg []byte, err error) {
 	listMsg := []byte("GETFILELIST\n\r")
 	return listMsg, nil
 }
+
+func FileRequest(fileName string) (msg []byte, err error) {
+	listMsg := []byte("GETFILE:" + fileName + "\n\r")
+	return listMsg, nil
+}

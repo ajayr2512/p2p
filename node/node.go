@@ -5,14 +5,17 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ajayr2512/ptp/peers"
 )
 
-func processPeerRequest(conn net.Conn, fileList []string) {
+func processPeerRequest(conn net.Conn, fileList []string, dataPath string) {
 	log.Println("Doing peer server work")
 
 	// GET FILE LIST
@@ -29,9 +32,10 @@ func processPeerRequest(conn net.Conn, fileList []string) {
 	br := bytes.NewBuffer(req)
 	scanner := bufio.NewScanner(br)
 	scanner.Scan()
-	msgType := scanner.Text()
-	log.Println(msgType)
 
+	s := strings.Split(scanner.Text(), ":")
+	msgType := s[0]
+	log.Println(msgType)
 	var reply []byte
 	switch msgType {
 	case "GETFILELIST":
@@ -44,8 +48,28 @@ func processPeerRequest(conn net.Conn, fileList []string) {
 			log.Println(err)
 		}
 		log.Println("Replied with: ", string(reply))
+
+	case "GETFILE":
+		fileName := s[1]
+		filePath := filepath.Join(dataPath, fileName)
+		file, err := os.OpenFile(filePath, os.O_RDWR, 0644)
+		if err != nil {
+			log.Println(err)
+		}
+
+		// TODO: write bytes directly to  conn
+		var fileBytes []byte
+		if fileBytes, err = ioutil.ReadAll(file); err != nil {
+			log.Println(err)
+		}
+		fileBytes = append(fileBytes, byte('\r'))
+		if _, err := conn.Write(fileBytes); err != nil {
+			log.Println(err)
+		}
+		log.Println("Replied with ", string(fileBytes))
 	}
 	// GET FILE
+
 }
 
 func startNodeServer(p peers.Peer, data []string, done chan struct{}) {
@@ -73,7 +97,7 @@ loop:
 			log.Println("Exiting Peer server")
 			break loop
 		case con := <-conChan:
-			go processPeerRequest(con, data)
+			go processPeerRequest(con, data, peers.FileLocation(p))
 		}
 	}
 

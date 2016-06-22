@@ -3,6 +3,7 @@ package peers
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -20,6 +21,10 @@ type Peer struct {
 }
 
 type fileList []string
+
+// TODO: client error handling if server not found
+// TODO: server exits on client error !!
+// TODO: better handling of the fileHostMap
 
 func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 	// create cookie file if doesnt exist
@@ -142,6 +147,10 @@ func NewPeerServer(peer Peer) (ln net.Listener, err error) {
 	}
 }
 
+func FileLocation(peer Peer) (path string) {
+	return peer.data
+}
+
 func (peer *Peer) GetFile(fileName string, fileHostMap map[string]string) (err error) {
 	// Contact RS to get list of active nodes
 	if _, ok := fileHostMap[fileName]; !ok {
@@ -178,18 +187,12 @@ func (peer *Peer) GetFile(fileName string, fileHostMap map[string]string) (err e
 
 			// ** Change peer struct to store filelist instead of data ??
 			// Query each node to get their filelist
-			// TODO: Have a caching mechanism ??
-			//	if isFilePresent(scanner.Text(), fileName) {
-			//		fileNode = (scanner.Text())
-			//		log.Println("File found in ", fileNode)
-			//		return nil
-			//	}
 		}
 	}
 
 	log.Println("Get File ", fileHostMap)
 
-	if err = getFileFromHost(fileName, fileHostMap[fileName]); err != nil {
+	if err = getFileFromHost(fileName, fileHostMap[fileName], peer.data); err != nil {
 		return err
 	}
 
@@ -233,8 +236,39 @@ func getFileListFromNodes(fileHostMap map[string]string, host string) (err error
 	return nil
 }
 
-func getFileFromHost(fileName string, host string) (err error) {
+func getFileFromHost(fileName string, host string, path string) (err error) {
 	log.Println(fileName)
 	log.Println(host)
+	filePath := filepath.Join(path, fileName)
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	conn, err := net.Dial("tcp", host)
+	if err != nil {
+		return err
+	}
+	var msg []byte
+	if msg, err = FileRequest(fileName); err != nil {
+		return err
+	}
+	log.Println(string(msg))
+	if _, err = conn.Write(msg); err != nil {
+		return err
+	}
+
+	//TODO: directly read to file instead of into req and then file ?
+	b := bufio.NewReader(conn)
+	var req []byte
+	if req, err = b.ReadBytes('\r'); err != nil {
+		return err
+	}
+	be := bytes.NewBuffer(req)
+	if _, err := io.Copy(file, be); err != nil {
+		return err
+	}
+
 	return nil
 }
