@@ -22,8 +22,6 @@ type Peer struct {
 
 type fileList []string
 
-// TODO: client error handling if server not found
-// TODO: server exits on client error !!
 // TODO: better handling of the fileHostMap
 
 func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
@@ -186,7 +184,6 @@ func (peer *Peer) GetFile(fileName string, fileHostMap map[string]string) (err e
 			}
 
 			// ** Change peer struct to store filelist instead of data ??
-			// Query each node to get their filelist
 		}
 	}
 
@@ -195,10 +192,6 @@ func (peer *Peer) GetFile(fileName string, fileHostMap map[string]string) (err e
 	if err = getFileFromHost(fileName, fileHostMap[fileName], peer.data); err != nil {
 		return err
 	}
-
-	// if the list contains fileName
-	// contact the guy to send the file
-	// receive the file and save in data
 
 	return nil
 }

@@ -19,8 +19,6 @@ type peerInfo struct {
 
 var activeDict = make(map[int]peerInfo)
 
-//var idChan chan int
-
 // Moved cookie logic + Connect/Re-connect to clients
 
 func main() {
@@ -65,7 +63,8 @@ func main() {
 		b := bufio.NewReader(conn)
 		var req []byte
 		if req, err = b.ReadBytes('\r'); err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			continue
 		}
 
 		log.Println(string(req))
