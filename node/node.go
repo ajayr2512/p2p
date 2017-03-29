@@ -18,6 +18,10 @@ import (
 func processPeerRequest(conn net.Conn, fileList []string, dataPath string) {
 	log.Println("Doing peer server work")
 
+	// TODO: MAJOR: Close connections conn !!
+	// TODO: From above maybe no need for delimiters conn closing would be good ?? Check for persistent vs non persistent connections ...
+	// TODO: Mem leak checks
+	// TODO: Feature: HeartBeats
 	// GET FILE LIST
 	b := bufio.NewReader(conn)
 	var req []byte
@@ -62,10 +66,10 @@ func processPeerRequest(conn net.Conn, fileList []string, dataPath string) {
 		if fileBytes, err = ioutil.ReadAll(file); err != nil {
 			log.Println(err)
 		}
-		fileBytes = append(fileBytes, byte('\r'))
 		if _, err := conn.Write(fileBytes); err != nil {
 			log.Println(err)
 		}
+		conn.Close()
 		log.Println("Replied with ", string(fileBytes))
 	}
 	// GET FILE
@@ -128,8 +132,10 @@ func main() {
 	fmt.Println("HELP TEXT CLIENT")
 loop:
 	for {
+		fmt.Println("Enter Command: ")
 		fmt.Scanf("%s", &in)
 		if in == "LEAVE" {
+			fmt.Printf("See ya")
 			if err := p.Leave(); err != nil {
 				log.Fatal(err)
 			}
@@ -140,6 +146,7 @@ loop:
 
 		if strings.HasPrefix(in, "GET") {
 			s := strings.Split(in, ":")
+			fmt.Println("Getting ", s[1])
 			if err := p.GetFile(s[1], fileHostMap); err != nil {
 				log.Println(err)
 			}

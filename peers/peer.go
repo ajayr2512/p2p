@@ -23,6 +23,7 @@ type Peer struct {
 type fileList []string
 
 // TODO: better handling of the fileHostMap
+// TODO: same file in different nodes ? How it is handled ?
 
 func NewPeer(port int, hname, data string) (peer Peer, files fileList) {
 	// create cookie file if doesnt exist
@@ -252,14 +253,8 @@ func getFileFromHost(fileName string, host string, path string) (err error) {
 		return err
 	}
 
-	//TODO: directly read to file instead of into req and then file ?
-	b := bufio.NewReader(conn)
-	var req []byte
-	if req, err = b.ReadBytes('\r'); err != nil {
-		return err
-	}
-	be := bytes.NewBuffer(req)
-	if _, err := io.Copy(file, be); err != nil {
+	// TODO: This is not breaking out ??? :(
+	if _, err := io.Copy(file, conn); err != nil {
 		return err
 	}
 
